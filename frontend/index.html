@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Land Registry Portal</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.2/ethers.umd.min.js"></script>
+<style>
+:root{--forest:#16332b;--deep:#0e211b;--bg:#f4f1e8;--panel:#fff;--gold:#b8912f;--soft:#e4d6a7;--line:#ddd6c0;--ink:#1c2019;--mute:#6a6552;--err:#9a3324;--ok:#2f5d33;--r:6px}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+.app{display:grid;grid-template-columns:240px 1fr;min-height:100vh}
+aside{background:var(--forest);color:#f4efe2;padding:20px 12px;position:sticky;top:0;height:100vh;overflow:auto}
+aside h1{font:600 1.1rem Georgia,serif;margin:0 8px 2px}
+aside small{display:block;margin:0 8px 18px;color:var(--soft);font-size:.75rem}
+nav button{display:flex;gap:10px;width:100%;align-items:center;background:none;border:0;color:#e8e2cc;padding:10px 12px;border-radius:var(--r);font-size:.9rem;cursor:pointer;text-align:left}
+nav button:hover{background:rgba(255,255,255,.08)}
+nav button.on{background:var(--gold);color:var(--deep);font-weight:600}
+nav .ic{width:18px;text-align:center}
+.tag{margin-left:auto;font-size:.6rem;background:rgba(255,255,255,.18);padding:1px 6px;border-radius:9px}
+main{padding:0 28px 60px;min-width:0}
+.top{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:16px 0;border-bottom:1px solid var(--line);margin-bottom:24px;flex-wrap:wrap}
+.top h2{margin:0;font:600 1.4rem Georgia,serif;color:var(--forest)}
+#menuBtn{display:none}
+.wallet{display:flex;align-items:center;gap:10px;font-size:.8rem;color:var(--mute)}
+.btn{background:var(--forest);color:#fff;border:0;padding:10px 16px;border-radius:var(--r);font-weight:600;cursor:pointer;font-size:.88rem}
+.btn:hover{background:var(--deep)}.btn:disabled{background:#aaa;cursor:not-allowed}
+.btn.gold{background:var(--gold);color:var(--deep)}.btn.line{background:none;border:1px solid var(--forest);color:var(--forest)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:20px;margin-bottom:20px}
+.card h3{margin:0 0 14px;font:600 1.05rem Georgia,serif;color:var(--forest)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:20px}
+.stat{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--gold);border-radius:var(--r);padding:14px 16px}
+.stat b{display:block;font-size:1.5rem;color:var(--forest);word-break:break-all}.stat span{font-size:.75rem;color:var(--mute)}
+label{display:block;font-size:.8rem;font-weight:600;margin:14px 0 5px;color:#4a4636}
+input,textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:var(--r);font:inherit;background:#fff}
+input:focus,textarea:focus{outline:2px solid var(--gold)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 16px}
+.msg{display:none;margin-top:12px;padding:10px 12px;border-radius:var(--r);font-size:.85rem}
+.msg.show{display:block}.msg.ok{background:#e3ecdf;color:var(--ok)}.msg.err{background:#f4ded9;color:var(--err)}.msg.info{background:#eef0e6;color:var(--forest)}
+.tw{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:.86rem}
+th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+td.wrap{white-space:normal;min-width:180px}th{font-size:.72rem;text-transform:uppercase;letter-spacing:.4px;color:var(--mute)}
+tr.row{cursor:pointer}tr.row:hover{background:#faf7ec}
+.dl{display:grid;grid-template-columns:150px 1fr;gap:10px 14px;font-size:.9rem}.dl dt{color:var(--mute)}.dl dd{margin:0;word-break:break-all}
+.empty{text-align:center;color:var(--mute);padding:34px 10px}
+.badge{display:inline-block;font-size:.7rem;font-weight:600;padding:2px 8px;border-radius:9px;background:var(--soft);color:var(--deep)}
+.planned{border:2px dashed var(--line);background:#faf8f0}
+.page{display:none}.page.on{display:block}
+.bar{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap}.bar input{flex:1;min-width:200px}
+@media(max-width:800px){
+.app{grid-template-columns:1fr}
+aside{position:fixed;z-index:10;width:250px;left:-260px;transition:left .2s}aside.open{left:0}
+#menuBtn{display:inline-block}main{padding:0 14px 50px}.grid2{grid-template-columns:1fr}.dl{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="app">
+<aside id="side">
+  <h1>Land Registry</h1><small>Blockchain-backed records</small>
+  <nav id="nav">
+    <button data-page="dashboard" class="on"><span class="ic">▦</span>Dashboard</button>
+    <button data-page="register"><span class="ic">✎</span>Register Land</button>
+    <button data-page="records"><span class="ic">☰</span>Land Records</button>
+    <button data-page="details"><span class="ic">◎</span>Property Details</button>
+    <button data-page="verify"><span class="ic">✓</span>Verify Document<span class="tag">Planned</span></button>
+    <button data-page="history"><span class="ic">⇄</span>Transactions</button>
+    <button data-page="admin"><span class="ic">⚙</span>Registrar / Admin<span class="tag">Planned</span></button>
+  </nav>
+</aside>
+
+<main>
+  <div class="top">
+    <div><button class="btn line" id="menuBtn">☰ Menu</button> <h2 id="title" style="display:inline">Dashboard</h2></div>
+    <div class="wallet"><span id="wstatus">Not connected</span><button class="btn gold" id="connectBtn">Connect Wallet</button></div>
+  </div>
+  <div class="msg" id="globalMsg"></div>
+
+  <section class="page on" id="p-dashboard">
+    <div class="stats">
+      <div class="stat"><b id="sTotal">–</b><span>Registered land records</span></div>
+      <div class="stat"><b id="sChain">–</b><span>Connected chain ID (local Hardhat = 31337)</span></div>
+      <div class="stat"><b id="sWallet">–</b><span>Your wallet</span></div>
+    </div>
+    <div class="card"><h3>Latest registrations</h3><div class="tw" id="recent"><div class="empty">Connect your wallet to load records from the blockchain.</div></div></div>
+  </section>
+
+  <section class="page" id="p-register">
+    <div class="card" style="max-width:640px">
+      <h3>Register a Land Record</h3>
+      <form id="regForm">
+        <div class="grid2">
+          <div><label for="rName">Owner name</label><input id="rName" maxlength="100" required></div>
+          <div><label for="rAge">Owner age</label><input id="rAge" type="number" min="18" max="120" required></div>
+        </div>
+        <label for="rUid">Land UID</label><input id="rUid" maxlength="64" placeholder="e.g. LAND-2026-001" required>
+        <label for="rHist">History / description</label><textarea id="rHist" rows="4" maxlength="1000"></textarea>
+        <button class="btn" id="regBtn" style="margin-top:18px;width:100%">Register on Blockchain</button>
+      </form>
+      <div class="msg" id="regMsg"></div>
+      <p style="font-size:.78rem;color:var(--mute)">Note: data written here is public and permanent. Area, location and document fields arrive with the contract upgrade (Step 7).</p>
+    </div>
+  </section>
+
+  <section class="page" id="p-records">
+    <div class="card">
+      <div class="bar"><input id="q" placeholder="Search by UID, name or history…"><button class="btn line" id="reload">Reload</button></div>
+      <div class="tw" id="tbl"><div class="empty">Connect your wallet to load records.</div></div>
+    </div>
+  </section>
+
+  <section class="page" id="p-details">
+    <div class="card" id="detailBox"><div class="empty">Open a record from <b>Land Records</b> or the Dashboard to see its details here.</div></div>
+  </section>
+
+  <section class="page" id="p-verify">
+    <div class="card planned"><h3>Document Verification <span class="badge">Planned</span></h3>
+    <p>Not available yet. The current contract stores no document hashes, so there is nothing real to verify against. This page will compare a file's hash with the hash stored on-chain once the contract is upgraded.</p></div>
+  </section>
+
+  <section class="page" id="p-history">
+    <div class="card"><h3>Registration transactions (from blockchain events)</h3>
+      <div class="tw" id="hist"><div class="empty">Connect your wallet to load events.</div></div></div>
+  </section>
+
+  <section class="page" id="p-admin">
+    <div class="card planned"><h3>Registrar / Admin <span class="badge">Planned</span></h3>
+    <p>Not available yet. The current contract has no registrar roles: any wallet can register. Role management will be added with the contract upgrade (Step 7).</p></div>
+  </section>
+</main>
+</div>
+
+<script>
+// ---- Paste the address printed by: npx hardhat run scripts/deploy.js --network localhost ----
+const CONTRACT_ADDRESS = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
+const ABI = [
+  "function registerLand(string _name, uint256 _age, string _history, string _uid) public",
+  "function getLand(string _uid) view returns (string name, uint256 age, string history, string uid, address registeredBy, uint256 timestamp)",
+  "function getAllUIDs() view returns (string[])",
+  "function totalLands() view returns (uint256)",
+  "event LandRegistered(string indexed uid, string name, uint256 age, uint256 timestamp)"
+];
+const $ = id => document.getElementById(id);
+let provider, contract, lands = [];
+
+// Escape text so user-entered data can never run as HTML (fixes the XSS bug)
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const short = a => a.slice(0,6) + "…" + a.slice(-4);
+const fmt = t => new Date(Number(t) * 1000).toLocaleString();
+function msg(el, text, type){ el.textContent = text; el.className = "msg show " + type; }
+
+// ---------- navigation ----------
+const titles = {dashboard:"Dashboard",register:"Register Land",records:"Land Records",details:"Property Details",verify:"Document Verification",history:"Transaction History",admin:"Registrar / Admin"};
+function go(page){
+  document.querySelectorAll(".page").forEach(p => p.classList.toggle("on", p.id === "p-" + page));
+  document.querySelectorAll("#nav button").forEach(b => b.classList.toggle("on", b.dataset.page === page));
+  $("title").textContent = titles[page];
+  $("side").classList.remove("open");
+  if (page === "history") loadHistory();
+}
+$("nav").addEventListener("click", e => { const b = e.target.closest("button"); if (b) go(b.dataset.page); });
+$("menuBtn").onclick = () => $("side").classList.toggle("open");
+
+// ---------- wallet ----------
+async function connect(){
+  const g = $("globalMsg");
+  if (!window.ethereum) return msg(g, "MetaMask not found. Install it and reload.", "err");
+  if (!ethers.isAddress(CONTRACT_ADDRESS)) return msg(g, "Contract address not set. Paste the deployed address into CONTRACT_ADDRESS in frontend/index.html.", "err");
+  try {
+    provider = new ethers.BrowserProvider(window.ethereum);
+    await provider.send("eth_requestAccounts", []);
+    if ((await provider.getCode(CONTRACT_ADDRESS)) === "0x")
+      return msg(g, "No contract at that address on this network. Check MetaMask is on Hardhat Local (31337), and redeploy if you restarted the node.", "err");
+    const signer = await provider.getSigner();
+    contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
+    const addr = await signer.getAddress();
+    $("wstatus").textContent = short(addr);
+    $("sWallet").textContent = short(addr);
+    $("sChain").textContent = (await provider.getNetwork()).chainId.toString();
+    $("connectBtn").textContent = "Connected"; $("connectBtn").disabled = true;
+    $("globalMsg").className = "msg";
+    await loadLands();
+  } catch (err) { console.error(err); msg(g, err.shortMessage || "Could not connect wallet.", "err"); }
+}
+$("connectBtn").onclick = connect;
+if (window.ethereum){ // reload on account/network change so the app never uses stale data
+  window.ethereum.on("accountsChanged", () => location.reload());
+  window.ethereum.on("chainChanged", () => location.reload());
+}
+
+// ---------- data ----------
+async function loadLands(){
+  try {
+    const uids = await contract.getAllUIDs();
+    lands = await Promise.all(uids.map(u => contract.getLand(u)));
+    $("sTotal").textContent = lands.length;
+    renderRecent(); renderTable();
+  } catch (err) { console.error(err); msg($("globalMsg"), "Could not read records from the contract.", "err"); }
+}
+function rowHtml(l, i){
+  return `<tr class="row" data-i="${i}"><td><span class="badge">${esc(l.uid)}</span></td><td>${esc(l.name)}</td><td>${esc(l.age)}</td><td>${fmt(l.timestamp)}</td><td>${short(l.registeredBy)}</td></tr>`;
+}
+const head = "<table><thead><tr><th>UID</th><th>Owner</th><th>Age</th><th>Registered</th><th>By wallet</th></tr></thead><tbody>";
+function renderRecent(){
+  const last = lands.map((l,i)=>[l,i]).slice(-5).reverse();
+  $("recent").innerHTML = last.length ? head + last.map(([l,i])=>rowHtml(l,i)).join("") + "</tbody></table>" : '<div class="empty">No lands registered yet.</div>';
+}
+function renderTable(){
+  const q = $("q").value.trim().toLowerCase();
+  const rows = lands.map((l,i)=>[l,i]).filter(([l]) => !q || [l.uid,l.name,l.history].some(v => v.toLowerCase().includes(q)));
+  $("tbl").innerHTML = !lands.length ? '<div class="empty">No lands registered yet.</div>'
+    : !rows.length ? '<div class="empty">No records match your search.</div>'
+    : head + rows.map(([l,i])=>rowHtml(l,i)).join("") + "</tbody></table>";
+}
+$("q").oninput = renderTable;
+$("reload").onclick = () => contract ? loadLands() : msg($("globalMsg"), "Connect your wallet first.", "err");
+document.addEventListener("click", e => {
+  const r = e.target.closest("tr.row"); if (r) showDetails(lands[r.dataset.i]);
+});
+function showDetails(l){
+  $("detailBox").innerHTML = `<h3>${esc(l.uid)}</h3><dl class="dl">
+    <dt>Owner name</dt><dd>${esc(l.name)}</dd><dt>Owner age</dt><dd>${esc(l.age)}</dd>
+    <dt>History</dt><dd>${esc(l.history) || "No history provided."}</dd>
+    <dt>Registered on</dt><dd>${fmt(l.timestamp)}</dd><dt>Registering wallet</dt><dd>${esc(l.registeredBy)}</dd>
+    <dt>Verification</dt><dd><span class="badge">Not implemented yet</span></dd></dl>
+    <p style="font-size:.78rem;color:var(--mute)">A blockchain record shows who submitted data and when. It is not proof of legal ownership.</p>`;
+  go("details");
+}
+
+// ---------- register ----------
+$("regForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const m = $("regMsg");
+  if (!contract) return msg(m, "Connect your wallet first.", "err");
+  const name = $("rName").value.trim(), uid = $("rUid").value.trim(), hist = $("rHist").value.trim(), age = Number($("rAge").value);
+  if (!name || !uid) return msg(m, "Name and UID are required.", "err");
+  if (!Number.isInteger(age) || age < 18 || age > 120) return msg(m, "Age must be a whole number from 18 to 120.", "err");
+  $("regBtn").disabled = true; $("regBtn").textContent = "Waiting for MetaMask…";
+  try {
+    const tx = await contract.registerLand(name, age, hist, uid);
+    msg(m, "Transaction sent. Waiting for confirmation… (" + short(tx.hash) + ")", "info");
+    await tx.wait();
+    msg(m, "Registered on-chain. Transaction: " + tx.hash, "ok");
+    $("regForm").reset(); await loadLands();
+  } catch (err) {
+    console.error(err);
+    msg(m, err.reason || err.shortMessage || "Transaction failed or was rejected.", "err");
+  } finally { $("regBtn").disabled = false; $("regBtn").textContent = "Register on Blockchain"; }
+});
+
+// ---------- transaction history (real LandRegistered events) ----------
+async function loadHistory(){
+  if (!contract) return;
+  try {
+    const ev = await contract.queryFilter(contract.filters.LandRegistered(), 0, "latest");
+    $("hist").innerHTML = !ev.length ? '<div class="empty">No registration events yet.</div>'
+      : "<table><thead><tr><th>Block</th><th>Owner name</th><th>Time</th><th>Transaction hash</th></tr></thead><tbody>" +
+        ev.slice().reverse().map(x => `<tr><td>${x.blockNumber}</td><td>${esc(x.args.name)}</td><td>${fmt(x.args.timestamp)}</td><td>${esc(x.transactionHash)}</td></tr>`).join("") + "</tbody></table>";
+  } catch (err) { console.error(err); $("hist").innerHTML = '<div class="empty">Could not load events.</div>'; }
+}
+</script>
+</body>
+</html>

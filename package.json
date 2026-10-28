@@ -1,0 +1,14 @@
+{
+  "name": "land-registry",
+  "version": "1.0.0",
+  "description": "Blockchain-based land registration system (Solidity + Hardhat + simple frontend)",
+  "scripts": {
+    "compile": "hardhat compile",
+    "node": "hardhat node",
+    "deploy": "hardhat run scripts/deploy.js --network localhost"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "hardhat": "^2.22.0"
+  }
+}
